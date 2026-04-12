@@ -9,7 +9,7 @@ CORS(app)
 
 DB_NAME = "potholes.db"
 
-# Initialize the database
+# ✅ Initialize DB
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
@@ -27,17 +27,16 @@ def init_db():
 
 init_db()
 
-# Haversine distance calculation to avoid duplicates
+# ✅ Distance check
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000  # Earth radius in meters
+    R = 6371000
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
 
-    a = math.sin(dphi/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda/2)**2
-    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
-# Check for duplicate potholes within 5 meters
 def is_duplicate(lat, lon, threshold=5):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
@@ -50,12 +49,16 @@ def is_duplicate(lat, lon, threshold=5):
             return True
     return False
 
-# Home route to display the map
+# ✅ Routes
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# API to add pothole data
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+# ✅ POST
 @app.route('/api/potholes', methods=['POST'])
 def add_pothole():
     data = request.json
@@ -75,11 +78,11 @@ def add_pothole():
         )
         conn.commit()
         conn.close()
-        return jsonify({'message': 'Pothole stored successfully'}), 201
-    else:
-        return jsonify({'message': 'Duplicate pothole ignored'}), 200
+        return jsonify({'message': 'Stored'}), 201
 
-# API to retrieve pothole data
+    return jsonify({'message': 'Duplicate ignored'}), 200
+
+# ✅ GET
 @app.route('/api/potholes', methods=['GET'])
 def get_potholes():
     conn = sqlite3.connect(DB_NAME)
@@ -88,16 +91,14 @@ def get_potholes():
     rows = c.fetchall()
     conn.close()
 
-    potholes = [
+    return jsonify([
         {
             'latitude': r[0],
             'longitude': r[1],
             'severity': r[2],
             'timestamp': r[3]
         } for r in rows
-    ]
-    return jsonify(potholes)
+    ])
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    
+    app.run(host= '0.0.0.0', port=5000)
