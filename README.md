@@ -67,29 +67,7 @@ Microcontroller (Arduino/ESP32)
  Website Dashboard
 ```
 
-## 📂 Project Structure
 
-```text
-Smart-Pothole-Detection/
-│
-├── hardware/
-│   └── pothole_detection.ino
-│
-├── backend/
-│   ├── api.php
-│   ├── database.php
-│
-├── frontend/
-│   ├── index.html
-│   ├── dashboard.html
-│   ├── style.css
-│   └── script.js
-│
-├── database/
-│   └── potholes.sql
-│
-└── README.md
-```
 
 ## 🗄 Database Schema
 
