@@ -1,158 +1,783 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>ShockMap - Pothole Detection</title>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <title>ShockMap - Pothole Detection</title>
+
+    <!-- Leaflet CSS -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
     <style>
-        body { margin: 0; }
-        #map { height: 100vh; }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        /* MAP */
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* DASHBOARD */
+
+        .dashboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+
+            background: rgba(255, 255, 255, 0.96);
+
+            padding: 18px;
+
+            border-radius: 14px;
+
+            width: 240px;
+
+            box-shadow:
+                0 4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .dashboard h2 {
+            margin: 0 0 12px 0;
+
+            font-size: 23px;
+        }
+
+        .dashboard p {
+            margin: 8px 0;
+        }
+
+        .count {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* LEGEND */
+
+        .legend {
+            margin-top: 12px;
+        }
+
+        .legend-item {
+            margin: 6px 0;
+        }
+
+        .legend-dot {
+            display: inline-block;
+
+            width: 13px;
+            height: 13px;
+
+            border-radius: 50%;
+
+            margin-right: 7px;
+        }
+
+        .mild {
+            background: green;
+        }
+
+        .moderate {
+            background: orange;
+        }
+
+        .severe {
+            background: red;
+        }
+
+        /* BUTTONS */
+
+        .button-container {
+            position: absolute;
+
+            top: 20px;
+            right: 20px;
+
+            z-index: 1000;
+
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 10px;
+        }
+
+        button {
+            border: none;
+
+            padding: 11px 16px;
+
+            border-radius: 9px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 3px 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .voice-button {
+            background: #222;
+            color: white;
+        }
+
+        .location-button {
+            background: #1976d2;
+            color: white;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        /* STATUS */
+
+        .status {
+            margin-top: 12px;
+
+            padding: 8px;
+
+            border-radius: 7px;
+
+            background: #f1f1f1;
+
+            font-size: 12px;
+        }
+
     </style>
+
 </head>
+
+
 <body>
-    <button onclick="enableVoice()" style="position:absolute; top:10px; right:10px; z-index:1000;">
-🔊 Enable Voice
-</button>
-    <div style="position:absolute; top:10px; left:10px; z-index:1000; background:white; padding:10px; border-radius:10px;">
-    <h3>ShockMap 🚧</h3>
-    <p>Total Potholes: <span id="count">0</span></p>
-    <p>
-        🟢 Mild<br>
-        🟠 Moderate<br>
-        🔴 Severe
-    </p>
-</div>
-<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- ========================================= -->
+    <!-- DASHBOARD -->
+    <!-- ========================================= -->
+
+    <div class="dashboard">
+
+        <h2>🚧 ShockMap</h2>
+
+        <p>
+            <strong>Total Potholes:</strong>
+            <span id="count" class="count">0</span>
+        </p>
+
+
+        <div class="legend">
+
+            <strong>Severity</strong>
+
+            <div class="legend-item">
+                <span class="legend-dot mild"></span>
+                Mild
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-dot moderate"></span>
+                Moderate
+            </div>
+
+            <div class="legend-item">
+                <span class="legend-dot severe"></span>
+                Severe
+            </div>
+
+        </div>
+
+
+        <div id="status" class="status">
+            System ready
+        </div>
+
+    </div>
+
+
+    <!-- ========================================= -->
+    <!-- BUTTONS -->
+    <!-- ========================================= -->
+
+    <div class="button-container">
+
+        <button
+            class="voice-button"
+            onclick="enableVoice()">
+
+            🔊 Enable Voice
+
+        </button>
+
+
+        <button
+            class="location-button"
+            onclick="findMyLocation()">
+
+            📍 My Location
+
+        </button>
+
+    </div>
+
+
+    <!-- ========================================= -->
+    <!-- MAP -->
+    <!-- ========================================= -->
+
+    <div id="map"></div>
+
+
+    <!-- Leaflet JavaScript -->
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+
+
     <script>
-        
-        var map = L.map('map').setView([17.3850, 78.4867], 13);
 
-    // Step 2: Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-    
-    // Step 3: Function to assign colors based on severity
-    function getColor(severity) {
-        if (severity >= 5) return 'red';       // Severe
-        else if (severity >= 3) return 'orange'; // Moderate
-        else return 'green';                    // Mild
-    }
 
-    // Step 4: Create a layer group to manage markers
-    let markersLayer = L.layerGroup().addTo(map);
+        // ==================================================
+        // 1. CREATE MAP
+        // ==================================================
 
-    // Step 5: Function to fetch pothole data from backend
-    function loadPotholes() {
-        // Remove old markers to avoid duplication
-        markersLayer.clearLayers();
+        const map = L.map("map").setView(
+            [17.3850, 78.4867],
+            13
+        );
 
-        // Fetch data from the Flask API
-        fetch(' http://10.177.37.124:5000')
-            .then(response => response.json())
-            .then(data => {
-                data.forEach(p => {
-                    L.circleMarker([p.latitude, p.longitude], {
-                        color: getColor(p.severity),
-                        fillColor: getColor(p.severity),
-                        fillOpacity: 0.8,
-                        radius: 8,
-                        weight: 2
-                    })
-                    .bindPopup(
-                        `<b>Pothole Detected</b><br>
-                         Severity: ${p.severity}<br>
-                         Time: ${p.timestamp}`
-                    )
-                    .addTo(markersLayer);
-                });
-            })
-            .catch(error => console.error('Error:', error));
-    }
 
-    // Step 6: Load potholes when the page first opens
-    loadPotholes();
+        // ==================================================
+        // 2. OPEN STREET MAP
+        // ==================================================
 
-    // Step 7: Refresh the map every 5 seconds (Real-Time Update)
-    setInterval(loadPotholes, 5000);
-    
-        var map = L.map('map').setView([17.3850, 78.4867], 13); // Hyderabad
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                maxZoom: 19,
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+                attribution:
+                    '&copy; OpenStreetMap contributors'
+            }
+        ).addTo(map);
+
+
+        // ==================================================
+        // 3. MARKER LAYER
+        // ==================================================
+
+        const markersLayer =
+            L.layerGroup().addTo(map);
+
+
+        // ==================================================
+        // 4. SAMPLE POTHOLE DATA
+        // ==================================================
+        //
+        // This allows the GitHub Pages website to work
+        // without requiring your Flask server.
+        //
+        // Later we can replace this with:
+        //
+        // fetch("YOUR_BACKEND_URL/api/potholes")
+        //
+        // ==================================================
+
+        const potholes = [
+
+            {
+                latitude: 17.3850,
+                longitude: 78.4867,
+                severity: 2,
+                timestamp: "2026-09-22 15:00"
+            },
+
+            {
+                latitude: 17.3920,
+                longitude: 78.4810,
+                severity: 4,
+                timestamp: "2026-09-22 15:05"
+            },
+
+            {
+                latitude: 17.3780,
+                longitude: 78.4920,
+                severity: 6,
+                timestamp: "2026-09-22 15:10"
+            },
+
+            {
+                latitude: 17.4010,
+                longitude: 78.4700,
+                severity: 3,
+                timestamp: "2026-09-22 15:15"
+            },
+
+            {
+                latitude: 17.3710,
+                longitude: 78.4750,
+                severity: 5,
+                timestamp: "2026-09-22 15:20"
+            }
+
+        ];
+
+
+        // ==================================================
+        // 5. GET COLOR BASED ON SEVERITY
+        // ==================================================
 
         function getColor(severity) {
-            return severity > 3 ? 'red' :
-                   severity > 2 ? 'orange' : 'green';
+
+            if (severity >= 5) {
+
+                return "red";
+
+            }
+
+            else if (severity >= 3) {
+
+                return "orange";
+
+            }
+
+            else {
+
+                return "green";
+
+            }
+
         }
 
-        function loadPotholes() {
-            fetch('/api/potholes')
-                .then(response => response.json())
-                .then(data => {
-                    data.forEach(p => {
-                        L.circleMarker([p.latitude, p.longitude], {
-                            color: getColor(p.severity),
-                            radius: 8
-                        }).addTo(map)
-                          .bindPopup(
-                            `<b>Pothole Detected</b><br>
-                             Severity: ${p.severity}<br>
-                             Time: ${p.timestamp}`
-                          );
-                    });
-                });
+
+        // ==================================================
+        // 6. GET SEVERITY TEXT
+        // ==================================================
+
+        function getSeverityText(severity) {
+
+            if (severity >= 5) {
+
+                return "Severe";
+
+            }
+
+            else if (severity >= 3) {
+
+                return "Moderate";
+
+            }
+
+            else {
+
+                return "Mild";
+
+            }
+
         }
 
-       function loadPotholes() {
-    markersLayer.clearLayers();
 
-    fetch('/api/potholes')
-        .then(res => res.json())
-        .then(data => {
+        // ==================================================
+        // 7. LOAD POTHOLES ON MAP
+        // ==================================================
+
+        function loadPotholes(data) {
+
+
+            // Remove old markers
+
+            markersLayer.clearLayers();
+
 
             // Update counter
-            document.getElementById("count").innerText = data.length;
 
-            data.forEach(p => {
+            document.getElementById("count").innerText =
+                data.length;
 
-                let color = getColor(p.severity);
 
-                L.circleMarker([p.latitude, p.longitude], {
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.8,
-                    radius: 8
-                })
-                .bindPopup(
-                    `<b>Pothole Detected 🚧</b><br>
-                     Severity: ${p.severity}<br>
-                     Time: ${p.timestamp}`
-                )
-                .addTo(markersLayer);
+            // Add markers
+
+            data.forEach(function(pothole) {
+
+
+                const color =
+                    getColor(pothole.severity);
+
+
+                const severityText =
+                    getSeverityText(pothole.severity);
+
+
+                const marker =
+                    L.circleMarker(
+
+                        [
+                            pothole.latitude,
+                            pothole.longitude
+                        ],
+
+                        {
+
+                            color: color,
+
+                            fillColor: color,
+
+                            fillOpacity: 0.8,
+
+                            radius: 9,
+
+                            weight: 2
+
+                        }
+
+                    );
+
+
+                marker.bindPopup(`
+
+                    <div style="min-width:180px">
+
+                        <h3 style="margin-top:0">
+                            🚧 Pothole Detected
+                        </h3>
+
+                        <b>Severity:</b>
+                        ${severityText}
+
+                        <br><br>
+
+                        <b>Severity Score:</b>
+                        ${pothole.severity}
+
+                        <br><br>
+
+                        <b>Latitude:</b>
+                        ${pothole.latitude}
+
+                        <br>
+
+                        <b>Longitude:</b>
+                        ${pothole.longitude}
+
+                        <br><br>
+
+                        <b>Detected:</b>
+                        ${pothole.timestamp}
+
+                    </div>
+
+                `);
+
+
+                marker.addTo(markersLayer);
+
             });
-        });
-}
-function checkNearbyPotholes(userLat, userLon, potholes) {
-    potholes.forEach(p => {
-        let distance = map.distance([userLat, userLon], [p.latitude, p.longitude]);
 
-        if (distance < 50) {
-            alert("⚠️ Pothole ahead!");
+
+            document.getElementById("status").innerText =
+                "✅ Pothole data loaded";
+
         }
-    });
-}
- loadPotholes(navigator.geolocation.getCurrentPosition(position => {
-    let userLat = position.coords.latitude;
-    let userLon = position.coords.longitude;
 
-    checkNearbyPotholes(userLat, userLon, data);
-}));
+
+        // ==================================================
+        // 8. LOAD INITIAL DATA
+        // ==================================================
+
+        loadPotholes(potholes);
+
+
+        // ==================================================
+        // 9. USER LOCATION MARKER
+        // ==================================================
+
+        let userMarker = null;
+
+
+        // ==================================================
+        // 10. FIND USER LOCATION
+        // ==================================================
+
+        function findMyLocation() {
+
+
+            if (!navigator.geolocation) {
+
+                alert(
+                    "Geolocation is not supported by your browser."
+                );
+
+                return;
+
+            }
+
+
+            document.getElementById("status").innerText =
+                "📍 Getting your location...";
+
+
+            navigator.geolocation.getCurrentPosition(
+
+                function(position) {
+
+
+                    const userLat =
+                        position.coords.latitude;
+
+
+                    const userLon =
+                        position.coords.longitude;
+
+
+                    // Move map to user
+
+                    map.setView(
+                        [userLat, userLon],
+                        16
+                    );
+
+
+                    // Remove old user marker
+
+                    if (userMarker !== null) {
+
+                        map.removeLayer(userMarker);
+
+                    }
+
+
+                    // Create new user marker
+
+                    userMarker = L.marker(
+                        [userLat, userLon]
+                    )
+                    .addTo(map);
+
+
+                    userMarker
+                        .bindPopup(
+                            "<b>📍 You are here</b>"
+                        )
+                        .openPopup();
+
+
+                    document.getElementById("status").innerText =
+                        "📍 Location detected";
+
+
+                    // Check nearby potholes
+
+                    checkNearbyPotholes(
+
+                        userLat,
+
+                        userLon,
+
+                        potholes
+
+                    );
+
+                },
+
+
+                function(error) {
+
+
+                    console.log(error);
+
+
+                    document.getElementById("status").innerText =
+                        "⚠️ Unable to get location";
+
+
+                    alert(
+                        "Please allow location access in your browser."
+                    );
+
+                },
+
+                {
+
+                    enableHighAccuracy: true,
+
+                    timeout: 10000,
+
+                    maximumAge: 0
+
+                }
+
+            );
+
+        }
+
+
+        // ==================================================
+        // 11. CHECK NEARBY POTHOLES
+        // ==================================================
+
+        function checkNearbyPotholes(
+            userLat,
+            userLon,
+            data
+        ) {
+
+
+            let nearbyPotholes = [];
+
+
+            data.forEach(function(pothole) {
+
+
+                const distance =
+                    map.distance(
+
+                        [userLat, userLon],
+
+                        [
+                            pothole.latitude,
+                            pothole.longitude
+                        ]
+
+                    );
+
+
+                // 50 metres
+
+                if (distance <= 50) {
+
+                    nearbyPotholes.push({
+
+                        pothole: pothole,
+
+                        distance: distance
+
+                    });
+
+                }
+
+            });
+
+
+            if (nearbyPotholes.length > 0) {
+
+
+                const closest =
+                    nearbyPotholes[0];
+
+
+                const severity =
+                    getSeverityText(
+                        closest.pothole.severity
+                    );
+
+
+                const message =
+                    `Warning. ${severity} pothole detected approximately ${Math.round(closest.distance)} metres away.`;
+
+
+                document.getElementById("status").innerText =
+                    "⚠️ Pothole detected nearby";
+
+
+                alert(
+                    "⚠️ Pothole detected within 50 metres!"
+                );
+
+
+                speak(message);
+
+
+            }
+
+            else {
+
+
+                document.getElementById("status").innerText =
+                    "✅ No nearby potholes detected";
+
+            }
+
+        }
+
+
+        // ==================================================
+        // 12. ENABLE VOICE
+        // ==================================================
+
+        function enableVoice() {
+
+
+            speak(
+                "ShockMap voice alerts are now enabled."
+            );
+
+
+            document.getElementById("status").innerText =
+                "🔊 Voice alerts enabled";
+
+        }
+
+
+        // ==================================================
+        // 13. TEXT TO SPEECH
+        // ==================================================
+
+        function speak(message) {
+
+
+            if (
+                "speechSynthesis"
+                in window
+            ) {
+
+
+                window.speechSynthesis.cancel();
+
+
+                const speech =
+                    new SpeechSynthesisUtterance(
+                        message
+                    );
+
+
+                speech.rate = 1;
+
+                speech.pitch = 1;
+
+                speech.volume = 1;
+
+
+                window.speechSynthesis.speak(
+                    speech
+                );
+
+            }
+
+        }
+
+
     </script>
-    
+
+
 </body>
+
 </html>
